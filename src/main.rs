@@ -1,4 +1,4 @@
-use serde::{Deserialize, Serialize};
+use clap::Parser;
 use serde_scan;
 use std::{collections::HashMap, fmt::Display};
 
@@ -67,9 +67,11 @@ impl<'a> From<&'a str> for TuringMachine<'a> {
 }
 
 impl<'a> TuringMachine<'a> {
-    fn run(&mut self) -> bool {
+    fn run(&mut self, verbose: bool) -> bool {
         loop {
-            println!("{}", self);
+            if verbose {
+                println!("{}", self)
+            }
 
             let transition = self.get_transition();
             match transition {
@@ -127,10 +129,10 @@ impl<'a> Display for TuringMachine<'a> {
         for k in self.min_head..=self.max_head {
             f.write_fmt(format_args!("{}", self.tape.get(&k).unwrap_or(&' ')))?;
         }
-        f.write_fmt(format_args!(":{}\n", self.state))?;
         f.write_fmt(format_args!(
-            "{}^head",
-            " ".repeat(self.head.abs_diff(self.min_head) as usize)
+            "\n{}^HEAD:{}",
+            " ".repeat(self.head.abs_diff(self.min_head) as usize),
+            self.state
         ))?;
         Ok(())
     }
@@ -148,7 +150,7 @@ impl<'a> Transition<'a> {
         self.1.matches(c)
     }
 }
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone)]
 enum Movement {
     Left,
     Right,
@@ -214,9 +216,19 @@ impl From<&str> for WriteAction {
         }
     }
 }
+#[derive(Parser, Debug)]
+#[clap(author, version, about, long_about = None)]
+struct Args {
+    /// Path to the turing mashine file
+    path: String,
+    /// If set, the TM will print out every step
+    #[clap(short, long)]
+    verbose: bool,
+}
 
 fn main() {
-    let src = std::fs::read_to_string("goal.tm").expect("read file without errors");
+    let args = Args::parse();
+    let src = std::fs::read_to_string(args.path).expect("read file without errors");
     let mut tm: TuringMachine = TuringMachine::from(src.as_str());
-    println!("{}", tm.run());
+    println!("{}", tm.run(args.verbose));
 }
